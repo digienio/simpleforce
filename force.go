@@ -243,7 +243,6 @@ func (client *Client) ConvertLead(leadId string) error {
             <env:Body>
 								<urn:convertLead>
 									<urn:leadId>%s</urn:leadId>
-									<urn:convertedStatus>Closed - Converted</urn:convertedStatus>
                 </urn:convertLead>
             </env:Body>
         </env:Envelope>`
