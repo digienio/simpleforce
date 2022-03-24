@@ -50,7 +50,7 @@ type QueryResult struct {
 
 // Expose sid to save in admin settings
 func (client *Client) GetSid() (sid string) {
-        return client.sessionID
+	return client.sessionID
 }
 
 //Expose Loc to save in admin settings
@@ -60,8 +60,8 @@ func (client *Client) GetLoc() (loc string) {
 
 // Set SID and Loc as a means to log in without LoginPassword
 func (client *Client) SetSidLoc(sid string, loc string) {
-        client.sessionID = sid
-        client.instanceURL = loc
+	client.sessionID = sid
+	client.instanceURL = loc
 }
 
 // Query runs an SOQL query. q could either be the SOQL string or the nextRecordsURL.
@@ -222,6 +222,81 @@ func (client *Client) LoginPassword(username, password, token string) error {
 	client.user.fullName = loginResponse.UserFullName
 
 	log.Println(logPrefix, "User", client.user.name, "authenticated.")
+	return nil
+}
+
+func (client *Client) ConvertLead(leadId string) error {
+	// Use the SOAP interface to acquire session ID with username, password, and token.
+	// Do not use REST interface here as REST interface seems to have strong checking against client_id, while the SOAP
+	// interface allows a non-exist placeholder client_id to be used.
+	soapBody := `<?xml version="1.0" encoding="utf-8" ?>
+        <env:Envelope
+                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                xmlns:urn="urn:partner.soap.sforce.com">
+            <env:Header>
+                <urn:CallOptions>
+                    <urn:client>%s</urn:client>
+                    <urn:defaultNamespace>sf</urn:defaultNamespace>
+                </urn:CallOptions>
+            </env:Header>
+            <env:Body>
+								<urn:convertLead>
+									<urn:leadId>%s</urn:leadId>
+                </urn:convertLead>
+            </env:Body>
+        </env:Envelope>`
+	soapBody = fmt.Sprintf(soapBody, client.clientID, leadId)
+
+	url := fmt.Sprintf("%s/services/Soap/u/%s", client.baseURL, client.apiVersion)
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(soapBody))
+	if err != nil {
+		log.Println(logPrefix, "error occurred creating request,", err)
+		return err
+	}
+	req.Header.Add("Content-Type", "text/xml")
+	req.Header.Add("charset", "UTF-8")
+	req.Header.Add("SOAPAction", "convertLead")
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		log.Println(logPrefix, "error occurred submitting request,", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println(logPrefix, "request failed,", resp.StatusCode)
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		newStr := buf.String()
+		log.Println(logPrefix, "Failed resp.body: ", newStr)
+		theError := ParseSalesforceError(resp.StatusCode, buf.Bytes())
+		return theError
+	}
+
+	respData, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Println(logPrefix, "error occurred reading response data,", err)
+	}
+
+	var convertResponse struct {
+		XMLName       xml.Name `xml:"Envelope"`
+		AccountID     string   `xml:"Body>leadConvertResult>result>accountId"`
+		contactID     string   `xml:"Body>leadConvertResult>result>contactId"`
+		leadID        string   `xml:"Body>leadConvertResult>result>leadId"`
+		OpportunityID string   `xml:"Body>leadConvertResult>result>opportunityId"`
+		Success       string   `xml:"Body>leadConvertResult>result>success"`
+	}
+
+	err = xml.Unmarshal(respData, &convertResponse)
+	if err != nil {
+		log.Println(logPrefix, "error occurred parsing convertLead response,", err)
+		return err
+	}
+
 	return nil
 }
 
