@@ -236,10 +236,9 @@ func (client *Client) ConvertLead(leadId string) error {
                 xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
                 xmlns:urn="urn:partner.soap.sforce.com">
             <env:Header>
-                <urn:CallOptions>
-                    <urn:client>%s</urn:client>
-                    <urn:defaultNamespace>sf</urn:defaultNamespace>
-                </urn:CallOptions>
+                <urn:SessionHeader>
+                    <urn:sessionId>%s</urn:sessionId>
+                </urn:SessionHeader>
             </env:Header>
             <env:Body>
 								<urn:convertLead>
@@ -247,7 +246,7 @@ func (client *Client) ConvertLead(leadId string) error {
                 </urn:convertLead>
             </env:Body>
         </env:Envelope>`
-	soapBody = fmt.Sprintf(soapBody, client.clientID, leadId)
+	soapBody = fmt.Sprintf(soapBody, client.sessionID, leadId)
 
 	url := fmt.Sprintf("%s/services/Soap/u/%s", client.baseURL, client.apiVersion)
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(soapBody))
