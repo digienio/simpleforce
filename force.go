@@ -276,6 +276,7 @@ func (client *Client) ConvertLead(leadId string) error {
 	}
 
 	respData, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(respData[:]))
 
 	if err != nil {
 		log.Println(logPrefix, "error occurred reading response data,", err)
@@ -288,6 +289,7 @@ func (client *Client) ConvertLead(leadId string) error {
 		leadID        string   `xml:"Body>leadConvertResult>result>leadId"`
 		OpportunityID string   `xml:"Body>leadConvertResult>result>opportunityId"`
 		Success       string   `xml:"Body>leadConvertResult>result>success"`
+		Errors        []string `xml:"Body>leadConvertResult>result>errors"`
 	}
 
 	err = xml.Unmarshal(respData, &convertResponse)
