@@ -276,7 +276,9 @@ func (client *Client) ConvertLead(leadId string) error {
 	}
 
 	respData, err := ioutil.ReadAll(resp.Body)
+	fmt.Println("------------------")
 	fmt.Println(string(respData[:]))
+	fmt.Println("------------------")
 
 	if err != nil {
 		log.Println(logPrefix, "error occurred reading response data,", err)
